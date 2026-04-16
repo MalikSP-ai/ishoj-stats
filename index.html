@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#b81c1c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Ishøj IF · Holdstatistik</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="loading-screen">
+    <div class="loading-logo">
+      <span class="loading-club">ISHØJ IF</span>
+      <span class="loading-sub">M+40 · Forår 2026</span>
+    </div>
+    <div class="loading-spinner"></div>
+  </div>
+
+  <!-- ADMIN LOGIN MODAL -->
+  <div id="login-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-title">🔐 Admin Login</div>
+      <div class="modal-sub">Kun admin kan redigere</div>
+      <input type="password" id="login-input" placeholder="Kodeord..." class="modal-input" />
+      <div id="login-error" class="login-error hidden">Forkert kodeord</div>
+      <button class="btn-primary" onclick="doLogin()">Log ind</button>
+      <button class="btn-ghost" onclick="closeLogin()">Annuller</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- APP WRAPPER -->
+  <div id="app">
+
+    <!-- HEADER -->
+    <header class="header" id="main-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-eyebrow">ISHØJ IF · M+40 · FORÅR 2026</div>
+          <h1 class="header-title">Holdstatistik</h1>
+          <div class="header-sub">Pulje 2 · 9 kampe</div>
+        </div>
+        <div class="header-right">
+          <button id="admin-btn" class="admin-btn" onclick="toggleAdmin()">
+            <span id="admin-icon">🔒</span>
+            <span id="admin-label">Admin</span>
+          </button>
+        </div>
+      </div>
+      <div class="header-stats" id="header-stats">
+        <!-- Filled by JS -->
+      </div>
+    </header>
+
+    <!-- BACK HEADER (kamp detail) -->
+    <header class="header header-detail hidden" id="detail-header">
+      <div class="detail-header-inner">
+        <button class="back-btn" onclick="closeKamp()">← Tilbage</button>
+        <div id="detail-title" class="detail-title"></div>
+      </div>
+      <div id="detail-meta" class="detail-meta"></div>
+      <div id="result-row" class="result-row"></div>
+      <div id="score-row" class="score-row hidden"></div>
+    </header>
+
+    <!-- MAIN NAV -->
+    <nav class="main-nav" id="main-nav">
+      <button class="nav-btn active" data-view="kampe" onclick="setView('kampe')">Kampe</button>
+      <button class="nav-btn" data-view="sæson" onclick="setView('sæson')">Sæson</button>
+      <button class="nav-btn" data-view="bøder" onclick="setView('bøder')">Bøder</button>
+    </nav>
+
+    <!-- DETAIL NAV -->
+    <nav class="main-nav hidden" id="detail-nav">
+      <button class="nav-btn active" data-section="stats" onclick="setSection('stats')">📊 Stats</button>
+      <button class="nav-btn" data-section="bøder" onclick="setSection('bøder')">💰 Bøder</button>
+      <button class="nav-btn" data-section="motm" onclick="setSection('motm')">⭐ MOTM</button>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content" id="content">
+      <!-- Filled by JS -->
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
