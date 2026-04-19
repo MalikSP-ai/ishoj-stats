@@ -24,30 +24,49 @@ let state = {
 // ── INIT ─────────────────────────────────────────────────────────
 
 async function init() {
-  const raw = await apiGet();
-  if (!raw.kampe) {
+  try {
+    const raw = await apiGet();
+    if (!raw.kampe) {
+      state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
+    } else {
+      state.data = raw;
+      if (!state.data.boede_takster) state.data.boede_takster = DEFAULT_TAKSTER;
+    }
+  } catch (e) {
     state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
-  } else {
-    state.data = raw;
-    if (!state.data.boede_takster) state.data.boede_takster = DEFAULT_TAKSTER;
   }
   document.getElementById('loading-screen').classList.add('hidden');
   renderAll();
 }
+
+// Nødstop: skjul spinner efter 5 sekunder uanset hvad
+setTimeout(() => {
+  const ls = document.getElementById('loading-screen');
+  if (!ls.classList.contains('hidden')) {
+    ls.classList.add('hidden');
+    if (!state.data) state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
+    renderAll();
+  }
+}, 5000);
 
 // ── API (JSONP — omgår CORS med Google Apps Script) ───────────────
 
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = '__cb' + Date.now();
+    const timer = setTimeout(() => {
+      delete window[cb];
+      reject(new Error('Timeout'));
+    }, 8000);
     window[cb] = (data) => {
+      clearTimeout(timer);
       delete window[cb];
       script.remove();
       resolve(data);
     };
     const script = document.createElement('script');
     script.src = url + '&callback=' + cb;
-    script.onerror = () => { delete window[cb]; reject(new Error('JSONP fejl')); };
+    script.onerror = () => { clearTimeout(timer); delete window[cb]; reject(new Error('JSONP fejl')); };
     document.head.appendChild(script);
   });
 }
