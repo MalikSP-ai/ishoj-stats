@@ -111,11 +111,20 @@ function makeAvatar(spiller, size = 40, fontSize = 13) {
 }
 
 // ── API ─────────────────────────────────────────────────────────
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Date.now();
+    window[cb] = (data) => { delete window[cb]; document.head.removeChild(script); resolve(data); };
+    const script = document.createElement("script");
+    script.src = url + "0026callback=" + cb;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
 async function loadData() {
   try {
-    const url = `${APPS_SCRIPT_URL}?action=getData&t=${Date.now()}`;
-    const res = await fetch(url);
-    const data = await res.json();
+    const data = await jsonp(`${APPS_SCRIPT_URL}?action=getData&t=${Date.now()}`);
     if (data.kampe) {
       // Merge saved data with template (to preserve structure if new fields added)
       state.kampe = KAMPE_TEMPLATE.map(template => {
@@ -151,9 +160,7 @@ async function saveData() {
   updateSavingIndicator(true);
 
   try {
-    const url = `${APPS_SCRIPT_URL}?action=saveData&password=${encodeURIComponent(password)}&data=${encodeURIComponent(JSON.stringify({ kampe: state.kampe }))}`;
-    const res = await fetch(url);
-    const result = await res.json();
+    const result = await jsonp(`${APPS_SCRIPT_URL}?action=saveData&password=${encodeURIComponent(password)}&data=${encodeURIComponent(JSON.stringify({ kampe: state.kampe }))}`);
     if (!result.success) {
       showToast("❌ Gem fejlede: " + (result.error || "ukendt fejl"));
     }
@@ -194,9 +201,7 @@ async function doLogin() {
   document.getElementById("login-error").classList.add("hidden");
 
   try {
-    const url = `${APPS_SCRIPT_URL}?action=saveData&password=${encodeURIComponent(pass)}&data=${encodeURIComponent(JSON.stringify({ kampe: state.kampe }))}`;
-    const res = await fetch(url);
-    const result = await res.json();
+    const result = await jsonp(`${APPS_SCRIPT_URL}?action=saveData&password=${encodeURIComponent(pass)}&data=${encodeURIComponent(JSON.stringify({ kampe: state.kampe }))}`);
 
     if (result.success) {
       state.isAdmin = true;
