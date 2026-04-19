@@ -116,7 +116,7 @@ function jsonp(url) {
     const cb = "cb_" + Date.now();
     window[cb] = (data) => { delete window[cb]; document.head.removeChild(script); resolve(data); };
     const script = document.createElement("script");
-    script.src = url + "0026callback=" + cb;
+    script.src = url + "&callback=" + cb;
     script.onerror = reject;
     document.head.appendChild(script);
   });
