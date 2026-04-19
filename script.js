@@ -1,5 +1,25 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycbxu5ppXyYrwwhRQRwBJg_M3uDS5ZziPiRwapSGoLg1amhLCAmnM2ImUWhoyx-B-vPx63g/exec';
 
+const DEFAULT_SPILLERE = [
+  "Adnan Malik", "Ali Malik", "Ali Mirza", "Asam Khokhar",
+  "Azeem Ahmad", "Barbar Iqbal", "Faisal Hussain", "Jamil Jiwani",
+  "Kasim Hussain", "Khurram Ashraf", "Kim", "M. Irfan Asghar",
+  "Malik Shahzad", "Mohamed Garrouj", "Saqqeb",
+  "Shahid Mahmoood Hussain", "Suleman Malik"
+];
+
+const KAMPE_TEMPLATE = [
+  { id: 1, dato: "2026-04-15", modstander: "BFC Lundegården", hjemmeude: "U" },
+  { id: 2, dato: "2026-04-22", modstander: "Solrød FC",        hjemmeude: "H" },
+  { id: 3, dato: "2026-04-27", modstander: "Taastrup FC",      hjemmeude: "U" },
+  { id: 4, dato: "2026-05-06", modstander: "Albertslund IF",   hjemmeude: "H" },
+  { id: 5, dato: "2026-05-13", modstander: "Grønne Stjerne",   hjemmeude: "U" },
+  { id: 6, dato: "2026-05-20", modstander: "Rebæk IF",         hjemmeude: "H" },
+  { id: 7, dato: "2026-05-27", modstander: "Lundtofte Boldklub", hjemmeude: "H" },
+  { id: 8, dato: "2026-06-01", modstander: "IF Bytoften",      hjemmeude: "U" },
+  { id: 9, dato: "2026-06-10", modstander: "Roskilde Boldklub", hjemmeude: "H" },
+];
+
 const DEFAULT_TAKSTER = {
   'For sent': 20,
   'Gult kort': 50,
@@ -26,14 +46,26 @@ let state = {
 async function init() {
   try {
     const raw = await apiGet();
-    if (!raw.kampe) {
-      state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
-    } else {
-      state.data = raw;
-      if (!state.data.boede_takster) state.data.boede_takster = DEFAULT_TAKSTER;
-    }
+    const savedKampe = raw.kampe || [];
+    // Merge template med gemt data — bevarer kampstrukturen, henter gemte resultater
+    const kampe = KAMPE_TEMPLATE.map(template => {
+      const saved = savedKampe.find(k => k.id === template.id);
+      return saved ? { ...template, ...saved } : {
+        ...template, resultat: 'kommende',
+        maal_for: 0, maal_imod: 0, spillere: {}, boeder: {}, motm: null
+      };
+    });
+    state.data = {
+      kampe,
+      spillere: raw.spillere && raw.spillere.length > 0 ? raw.spillere : DEFAULT_SPILLERE,
+      boede_takster: raw.boede_takster || DEFAULT_TAKSTER
+    };
   } catch (e) {
-    state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
+    state.data = {
+      kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
+      spillere: DEFAULT_SPILLERE,
+      boede_takster: DEFAULT_TAKSTER
+    };
   }
   document.getElementById('loading-screen').classList.add('hidden');
   renderAll();
