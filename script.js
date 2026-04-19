@@ -124,9 +124,14 @@ function closeLogin() {
 async function doLogin() {
   const pw = document.getElementById('login-input').value.trim();
   if (!pw) return;
-  const url = `${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(state.data))}`;
   try {
-    const result = await jsonp(url);
+    // Hent friske data fra API inden vi gemmer — undgår at overskrive med tom state
+    const fresh = await apiGet();
+    if (fresh.kampe) {
+      state.data = fresh;
+      if (!state.data.boede_takster) state.data.boede_takster = DEFAULT_TAKSTER;
+    }
+    const result = await jsonp(`${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(state.data))}`);
     if (result.success) {
       state.isAdmin = true;
       state.adminPassword = pw;
