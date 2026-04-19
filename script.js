@@ -35,12 +35,26 @@ async function init() {
   renderAll();
 }
 
-// ── API ───────────────────────────────────────────────────────────
+// ── API (JSONP — omgår CORS med Google Apps Script) ───────────────
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = '__cb' + Date.now();
+    window[cb] = (data) => {
+      delete window[cb];
+      script.remove();
+      resolve(data);
+    };
+    const script = document.createElement('script');
+    script.src = url + '&callback=' + cb;
+    script.onerror = () => { delete window[cb]; reject(new Error('JSONP fejl')); };
+    document.head.appendChild(script);
+  });
+}
 
 async function apiGet() {
   try {
-    const res = await fetch(`${API_URL}?action=getData`);
-    return await res.json();
+    return await jsonp(`${API_URL}?action=getData`);
   } catch (e) {
     return {};
   }
@@ -49,8 +63,7 @@ async function apiGet() {
 async function apiSave() {
   try {
     const url = `${API_URL}?action=saveData&password=${encodeURIComponent(state.adminPassword)}&data=${encodeURIComponent(JSON.stringify(state.data))}`;
-    const res = await fetch(url);
-    return await res.json();
+    return await jsonp(url);
   } catch (e) {
     return { success: false, error: e.toString() };
   }
@@ -94,8 +107,7 @@ async function doLogin() {
   if (!pw) return;
   const url = `${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(state.data))}`;
   try {
-    const res = await fetch(url);
-    const result = await res.json();
+    const result = await jsonp(url);
     if (result.success) {
       state.isAdmin = true;
       state.adminPassword = pw;
