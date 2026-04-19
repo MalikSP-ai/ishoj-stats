@@ -5,7 +5,7 @@
 
 // ── KONFIGURATION ──────────────────────────────────────────────
 // VIGTIGT: Indsæt din Google Apps Script URL her efter deployment
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyP0upIpTN3_KR9f9AGcDKhYxJ7xnb1o5lX_z-1mKo7EADkGgS4zsmZ-z5DwkVYiZUBLA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycgZXxcySiqXgLluesrlJwRsCiRjfJrz5lyq5NS2kuyXt2P9UkZ1Bn7HWziY07T5dH5A/exec";
 
 const BØDE_CONFIG = {
   gult_kort:    { label: "Gult Kort",         icon: "🟨", beløb: 50  },
