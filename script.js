@@ -75,7 +75,13 @@ setTimeout(() => {
   const ls = document.getElementById('loading-screen');
   if (!ls.classList.contains('hidden')) {
     ls.classList.add('hidden');
-    if (!state.data) state.data = { kampe: [], spillere: [], boede_takster: DEFAULT_TAKSTER };
+    if (!state.data) {
+      state.data = {
+        kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
+        spillere: DEFAULT_SPILLERE,
+        boede_takster: DEFAULT_TAKSTER
+      };
+    }
     renderAll();
   }
 }, 5000);
@@ -589,6 +595,7 @@ function renderBøder(content) {
 // ── ADMIN ACTIONS ─────────────────────────────────────────────────
 
 function addKamp() {
+  if (!confirm('Tilføj en ny kamp til programmet?')) return;
   const id = Date.now();
   state.data.kampe.push({
     id,
