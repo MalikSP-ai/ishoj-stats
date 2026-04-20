@@ -284,7 +284,8 @@ function renderKampe(content) {
 
   if (state.isAdmin) {
     html += `<button class="btn-primary" style="width:100%;margin-bottom:14px" onclick="addKamp()">+ Tilføj kamp</button>`;
-    html += `<button class="btn-ghost" style="width:100%;margin-bottom:14px;border:1px dashed #ddd;border-radius:12px" onclick="adminSpillere()">👥 Administrer spillere</button>`;
+    html += `<button class="btn-ghost" style="width:100%;margin-bottom:8px;border:1px dashed #ddd;border-radius:12px" onclick="tilfoejSpiller()">➕ Tilføj spiller</button>`;
+    html += `<button class="btn-ghost" style="width:100%;margin-bottom:14px;border:1px dashed #ddd;border-radius:12px" onclick="adminSpillere()">👥 Rediger spillerliste</button>`;
   }
 
   const kommende = kampe.filter(k => k.resultat === 'kommende');
@@ -406,11 +407,11 @@ function renderStats(content) {
     { key:'assists',   icon:'🅰️', label:'ASS', color:'#3b82f6' },
     { key:'gule_kort', icon:'🟨', label:'GUL', color:'#eab308' },
     { key:'rode_kort', icon:'🟥', label:'RØD', color:'#ef4444' },
-    { key:'saves',     icon:'🧤', label:'RED', color:'#a855f7' }
+    { key:'clean_sheet', icon:'🛡️', label:'CS', color:'#a855f7' }
   ];
 
   const html = spillere.map((navn, i) => {
-    const s = kamp.spillere?.[navn] || { maal:0, assists:0, gule_kort:0, rode_kort:0, saves:0 };
+    const s = kamp.spillere?.[navn] || { maal:0, assists:0, gule_kort:0, rode_kort:0, clean_sheet:0 };
     const hasStats = Object.values(s).some(v => v > 0);
     const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
     const initials = navn.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
@@ -523,7 +524,7 @@ function renderSæson(content) {
   const kampe = (state.data.kampe || []).filter(k => k.resultat !== 'kommende');
   const spillere = state.data.spillere || [];
   const stats = {};
-  spillere.forEach(n => { stats[n] = { maal:0, assists:0, gule_kort:0, rode_kort:0, saves:0 }; });
+  spillere.forEach(n => { stats[n] = { maal:0, assists:0, gule_kort:0, rode_kort:0, clean_sheet:0 }; });
 
   kampe.forEach(k => spillere.forEach(n => {
     const s = k.spillere?.[n]; if (!s) return;
@@ -531,7 +532,7 @@ function renderSæson(content) {
     stats[n].assists   += s.assists   || 0;
     stats[n].gule_kort += s.gule_kort || 0;
     stats[n].rode_kort += s.rode_kort || 0;
-    stats[n].saves     += s.saves     || 0;
+    stats[n].clean_sheet += s.clean_sheet || 0;
   }));
 
   const board = (title, key, suffix, color) => {
@@ -553,7 +554,7 @@ function renderSæson(content) {
   content.innerHTML =
     board('⚽ Topscorere',     'maal',      ' mål', '#22c55e') +
     board('🅰️ Flest assists',  'assists',   ' ass', '#3b82f6') +
-    board('🧤 Flest redninger','saves',     ' red', '#a855f7') +
+    board('🛡️ Clean sheets',   'clean_sheet',' stk', '#a855f7') +
     board('🟨 Gule kort',      'gule_kort', ' stk', '#eab308');
 }
 
@@ -625,6 +626,20 @@ function addKamp() {
   openKamp(id);
 }
 
+function tilfoejSpiller() {
+  const navn = prompt('Navn på ny spiller:');
+  if (!navn || !navn.trim()) return;
+  const trimmed = navn.trim();
+  if (state.data.spillere.includes(trimmed)) {
+    showToast('Spilleren findes allerede');
+    return;
+  }
+  state.data.spillere.push(trimmed);
+  scheduleSave();
+  renderAll();
+  showToast(`${trimmed} tilføjet ✓`);
+}
+
 function adminSpillere() {
   const navne = prompt('Spillere (kommasepareret):\n\nNuværende: ' + (state.data.spillere || []).join(', '));
   if (navne === null) return;
@@ -654,7 +669,7 @@ function setScore(type, val) {
 function changeStat(navn, key, delta) {
   const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
   if (!kamp) return;
-  if (!kamp.spillere[navn]) kamp.spillere[navn] = { maal:0, assists:0, gule_kort:0, rode_kort:0, saves:0 };
+  if (!kamp.spillere[navn]) kamp.spillere[navn] = { maal:0, assists:0, gule_kort:0, rode_kort:0, clean_sheet:0 };
   kamp.spillere[navn][key] = Math.max(0, (kamp.spillere[navn][key] || 0) + delta);
   scheduleSave();
   renderStats(document.getElementById('content'));
