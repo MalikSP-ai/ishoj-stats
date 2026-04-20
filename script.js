@@ -43,30 +43,29 @@ let state = {
 
 // ── INIT ─────────────────────────────────────────────────────────
 
+function mergeStateFromApi(raw) {
+  const savedKampe = raw.kampe || [];
+  state.data.kampe = KAMPE_TEMPLATE.map(template => {
+    const saved = savedKampe.find(k => k.id === template.id);
+    return saved ? { ...template, ...saved } : {
+      ...template, resultat: 'kommende',
+      maal_for: 0, maal_imod: 0, spillere: {}, boeder: {}, motm: null
+    };
+  });
+  if (raw.spillere && raw.spillere.length > 0) state.data.spillere = raw.spillere;
+  if (raw.boede_takster) state.data.boede_takster = raw.boede_takster;
+}
+
 async function init() {
+  state.data = {
+    kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
+    spillere: DEFAULT_SPILLERE,
+    boede_takster: DEFAULT_TAKSTER
+  };
   try {
     const raw = await apiGet();
-    const savedKampe = raw.kampe || [];
-    // Merge template med gemt data — bevarer kampstrukturen, henter gemte resultater
-    const kampe = KAMPE_TEMPLATE.map(template => {
-      const saved = savedKampe.find(k => k.id === template.id);
-      return saved ? { ...template, ...saved } : {
-        ...template, resultat: 'kommende',
-        maal_for: 0, maal_imod: 0, spillere: {}, boeder: {}, motm: null
-      };
-    });
-    state.data = {
-      kampe,
-      spillere: raw.spillere && raw.spillere.length > 0 ? raw.spillere : DEFAULT_SPILLERE,
-      boede_takster: raw.boede_takster || DEFAULT_TAKSTER
-    };
-  } catch (e) {
-    state.data = {
-      kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
-      spillere: DEFAULT_SPILLERE,
-      boede_takster: DEFAULT_TAKSTER
-    };
-  }
+    mergeStateFromApi(raw);
+  } catch (e) { /* beholder defaults */ }
   document.getElementById('loading-screen').classList.add('hidden');
   renderAll();
 }
@@ -107,6 +106,7 @@ async function apiGet() {
   try {
     return await jsonp(`${API_URL}?action=getData`);
   } catch (e) {
+    showToast('Ingen forbindelse — viser lokale data', 5000);
     return {};
   }
 }
@@ -156,13 +156,12 @@ function closeLogin() {
 async function doLogin() {
   const pw = document.getElementById('login-input').value.trim();
   if (!pw) return;
+  const btn = document.querySelector('#login-modal .btn-primary');
+  btn.textContent = 'Logger ind...';
+  btn.disabled = true;
   try {
-    // Hent friske data fra API inden vi gemmer — undgår at overskrive med tom state
     const fresh = await apiGet();
-    if (fresh.kampe) {
-      state.data = fresh;
-      if (!state.data.boede_takster) state.data.boede_takster = DEFAULT_TAKSTER;
-    }
+    mergeStateFromApi(fresh);
     const result = await jsonp(`${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(state.data))}`);
     if (result.success) {
       state.isAdmin = true;
@@ -176,6 +175,9 @@ async function doLogin() {
     }
   } catch (e) {
     document.getElementById('login-error').classList.remove('hidden');
+  } finally {
+    btn.textContent = 'Log ind';
+    btn.disabled = false;
   }
 }
 
@@ -184,6 +186,17 @@ function updateAdminBtn() {
   document.getElementById('admin-icon').textContent = state.isAdmin ? '✓' : '🔒';
   document.getElementById('admin-label').textContent = 'Admin';
   btn.classList.toggle('logged-in', state.isAdmin);
+
+  const existing = document.getElementById('admin-banner');
+  if (state.isAdmin && !existing) {
+    const banner = document.createElement('div');
+    banner.id = 'admin-banner';
+    banner.className = 'admin-banner';
+    banner.textContent = 'ADMIN TILSTAND — ÆNDRINGER GEMMES AUTOMATISK';
+    document.getElementById('app').insertBefore(banner, document.getElementById('app').firstChild);
+  } else if (!state.isAdmin && existing) {
+    existing.remove();
+  }
 }
 
 // ── NAVIGATION ────────────────────────────────────────────────────
@@ -229,6 +242,10 @@ function closeKamp() {
 function renderAll() {
   renderHeaderStats();
   renderContent();
+  const content = document.getElementById('content');
+  content.classList.remove('fade-in');
+  void content.offsetWidth;
+  content.classList.add('fade-in');
 }
 
 function renderContent() {
@@ -593,6 +610,7 @@ function addKamp() {
 function adminSpillere() {
   const navne = prompt('Spillere (kommasepareret):\n\nNuværende: ' + (state.data.spillere || []).join(', '));
   if (navne === null) return;
+  if (!confirm('Opdater spillerliste? Dette kan ikke fortrydes.')) return;
   state.data.spillere = navne.split(',').map(n => n.trim()).filter(Boolean);
   scheduleSave();
   renderAll();
@@ -649,12 +667,12 @@ function setMOTM(navn) {
 
 // ── TOAST & EVENTS ────────────────────────────────────────────────
 
-function showToast(msg) {
+function showToast(msg, duration = 2500) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
   toast.classList.remove('hidden');
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.add('hidden'), 2500);
+  toast._timer = setTimeout(() => toast.classList.add('hidden'), duration);
 }
 
 document.getElementById('login-input').addEventListener('keydown', e => {

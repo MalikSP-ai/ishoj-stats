@@ -365,6 +365,17 @@ body {
   0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
 }
 
+/* ── ADMIN BANNER ── */
+.admin-banner {
+  background: var(--red); color: rgba(255,255,255,0.9);
+  text-align: center; font-size: 10px; font-weight: 700;
+  letter-spacing: 2px; padding: 6px;
+}
+
+/* ── FADE IN ── */
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
 /* ── UTILS ── */
 .hidden { display: none !important; }
 .flex-1 { flex: 1; }
