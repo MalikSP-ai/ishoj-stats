@@ -407,7 +407,7 @@ function renderStats(content) {
     { key:'assists',   icon:'🅰️', label:'ASS', color:'#3b82f6' },
     { key:'gule_kort', icon:'🟨', label:'GUL', color:'#eab308' },
     { key:'rode_kort', icon:'🟥', label:'RØD', color:'#ef4444' },
-    { key:'clean_sheet', icon:'🛡️', label:'CS', color:'#a855f7' }
+    { key:'clean_sheet', icon:'🧤', label:'RED', color:'#a855f7' }
   ];
 
   const html = spillere.map((navn, i) => {
@@ -554,7 +554,7 @@ function renderSæson(content) {
   content.innerHTML =
     board('⚽ Topscorere',     'maal',      ' mål', '#22c55e') +
     board('🅰️ Flest assists',  'assists',   ' ass', '#3b82f6') +
-    board('🛡️ Clean sheets',   'clean_sheet',' stk', '#a855f7') +
+    board('🧤 Fleste rene bure','clean_sheet',' stk', '#a855f7') +
     board('🟨 Gule kort',      'gule_kort', ' stk', '#eab308');
 }
 
