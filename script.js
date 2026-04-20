@@ -554,7 +554,7 @@ function renderSæson(content) {
   content.innerHTML =
     board('⚽ Topscorere',     'maal',      ' mål', '#22c55e') +
     board('🅰️ Flest assists',  'assists',   ' ass', '#3b82f6') +
-    board('🧤 Fleste rene bure','clean_sheet',' stk', '#a855f7') +
+    board('🧤 Ren bur',         'clean_sheet',' stk', '#a855f7') +
     board('🟨 Gule kort',      'gule_kort', ' stk', '#eab308');
 }
 
