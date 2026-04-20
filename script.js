@@ -361,9 +361,13 @@ function renderDetailHeader() {
   const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
   if (!kamp) return;
 
+  const isTemplate = KAMPE_TEMPLATE.some(t => t.id === kamp.id);
+  const deleteBtn = state.isAdmin && !isTemplate
+    ? `<button class="back-btn" style="background:rgba(255,0,0,0.25)" onclick="deleteKamp(${kamp.id})">🗑 Slet</button>`
+    : '';
   document.getElementById('detail-title').textContent = `vs ${kamp.modstander}`;
-  document.getElementById('detail-meta').textContent =
-    `${kamp.hjemmeude === 'H' ? 'Hjemme' : 'Ude'} · ${kamp.dato ? new Date(kamp.dato).toLocaleDateString('da-DK',{day:'numeric',month:'long',year:'numeric'}) : ''}`;
+  document.getElementById('detail-meta').innerHTML =
+    `${kamp.hjemmeude === 'H' ? 'Hjemme' : 'Ude'} · ${kamp.dato ? new Date(kamp.dato).toLocaleDateString('da-DK',{day:'numeric',month:'long',year:'numeric'}) : ''} ${deleteBtn}`;
 
   document.getElementById('result-row').innerHTML = ['vandt','uafgjort','tabte','kommende'].map(r => `
     <button class="result-btn ${r} ${kamp.resultat === r ? 'active' : ''}"
@@ -593,6 +597,13 @@ function renderBøder(content) {
 }
 
 // ── ADMIN ACTIONS ─────────────────────────────────────────────────
+
+function deleteKamp(id) {
+  if (!confirm('Slet denne kamp permanent?')) return;
+  state.data.kampe = state.data.kampe.filter(k => k.id !== id);
+  scheduleSave();
+  closeKamp();
+}
 
 function addKamp() {
   if (!confirm('Tilføj en ny kamp til programmet?')) return;
