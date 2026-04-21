@@ -676,13 +676,43 @@ function renderSæson(content) {
           </div>`).join('')}
     </div>`;
 
+  // Full player roster
+  const rosterRows = spillere.map((navn, i) => {
+    const s = stats[navn];
+    const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    const initials = navn.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const motmCount = motmCounts[navn] || 0;
+    const hasAny = s.maal || s.assists || s.clean_sheet || s.gule_kort || s.rode_kort || motmCount;
+    return `
+      <div class="roster-row ${hasAny ? '' : 'roster-row-empty'}">
+        <div class="avatar" style="background:${color};width:34px;height:34px;font-size:12px;flex-shrink:0">${initials}</div>
+        <div class="roster-name">${navn}</div>
+        <div class="roster-stats">
+          ${s.maal      > 0 ? `<span class="roster-chip" style="color:#22c55e">⚽${s.maal}</span>` : ''}
+          ${s.assists   > 0 ? `<span class="roster-chip" style="color:#3b82f6">🅰️${s.assists}</span>` : ''}
+          ${s.clean_sheet > 0 ? `<span class="roster-chip" style="color:#a855f7">🧤${s.clean_sheet}</span>` : ''}
+          ${s.gule_kort > 0 ? `<span class="roster-chip" style="color:#eab308">🟨${s.gule_kort}</span>` : ''}
+          ${s.rode_kort > 0 ? `<span class="roster-chip" style="color:#ef4444">🟥${s.rode_kort}</span>` : ''}
+          ${motmCount   > 0 ? `<span class="roster-chip" style="color:#eab308">⭐${motmCount}</span>` : ''}
+          ${!hasAny ? '<span style="font-size:11px;color:#ccc">Ingen stats</span>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  const rosterBoard = `
+    <div class="leaderboard-card">
+      <div class="leaderboard-title">👥 Hele holdet</div>
+      ${rosterRows}
+    </div>`;
+
   content.innerHTML =
     board('⚽ Topscorere',    'maal',       ' mål', '#22c55e') +
     board('🅰️ Flest assists', 'assists',    ' ass', '#3b82f6') +
     board('🧤 Rent bur',      'clean_sheet',' stk', '#a855f7') +
     board('🟨 Gule kort',     'gule_kort',  ' stk', '#eab308') +
     motmBoard +
-    streakBoard;
+    streakBoard +
+    rosterBoard;
 }
 
 // ── BØDER VIEW ────────────────────────────────────────────────────

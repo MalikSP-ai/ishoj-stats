@@ -490,3 +490,14 @@ body.dark .section-label         { color: #555; }
 .player-match-date { color: var(--muted); font-size: 11px; flex-shrink: 0; }
 .player-match-val { font-weight: 800; font-size: 13px; flex-shrink: 0; min-width: 36px; text-align: right; }
 body.dark .player-breakdown { background: #0d0d0f; }
+
+/* ── ROSTER ── */
+.roster-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.roster-row:last-child { border-bottom: none; }
+.roster-row-empty { opacity: 0.45; }
+.roster-name { font-size: 13px; font-weight: 600; flex-shrink: 0; min-width: 120px; }
+.roster-stats { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.roster-chip { font-size: 12px; font-weight: 700; }
