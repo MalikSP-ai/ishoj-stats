@@ -491,6 +491,21 @@ body.dark .section-label         { color: #555; }
 .player-match-val { font-weight: 800; font-size: 13px; flex-shrink: 0; min-width: 36px; text-align: right; }
 body.dark .player-breakdown { background: #0d0d0f; }
 
+/* ── SQUAD PANEL ── */
+.squad-card {
+  background: var(--white); border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.squad-title { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 2px; margin-bottom: 10px; }
+.squad-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.squad-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg); border-radius: 20px;
+  padding: 3px 10px 3px 3px;
+}
+.squad-chip-name { font-size: 12px; font-weight: 600; }
+
 /* ── ROSTER ── */
 .roster-row {
   display: flex; align-items: center; gap: 10px;

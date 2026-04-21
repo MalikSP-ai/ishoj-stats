@@ -270,7 +270,9 @@ function renderHeaderStats() {
   const kampe = state.data.kampe || [];
   const played = kampe.filter(k => k.resultat !== 'kommende');
   const vandt = played.filter(k => k.resultat === 'vandt').length;
-  const maal = played.reduce((s, k) => s + (k.maal_for || 0), 0);
+  const maal = played.reduce((s, k) => {
+    return s + (k.hjemmeude === 'H' ? (k.maal_for || 0) : (k.maal_imod || 0));
+  }, 0);
   const kommende = kampe.filter(k => k.resultat === 'kommende').length;
 
   const formPills = played.slice(-5).map(k => {
@@ -302,6 +304,24 @@ function renderKampe(content) {
     html += `<button class="btn-primary" style="width:100%;margin-bottom:14px" onclick="addKamp()">+ Tilføj kamp</button>`;
     html += `<button class="btn-ghost" style="width:100%;margin-bottom:8px;border:1px dashed #ddd;border-radius:12px" onclick="tilfoejSpiller()">➕ Tilføj spiller</button>`;
     html += `<button class="btn-ghost" style="width:100%;margin-bottom:14px;border:1px dashed #ddd;border-radius:12px" onclick="adminSpillere()">👥 Rediger spillerliste</button>`;
+  }
+
+  // Spiller-chips
+  const spillere = state.data.spillere || [];
+  if (spillere.length > 0) {
+    const chips = spillere.map((navn, i) => {
+      const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+      const initials = navn.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+      return `<div class="squad-chip" title="${navn}">
+        <div class="avatar" style="background:${color};width:28px;height:28px;font-size:10px">${initials}</div>
+        <span class="squad-chip-name">${navn.split(' ')[0]}</span>
+      </div>`;
+    }).join('');
+    html += `
+      <div class="squad-card">
+        <div class="squad-title">HOLDET · ${spillere.length} SPILLERE</div>
+        <div class="squad-chips">${chips}</div>
+      </div>`;
   }
 
   const kommende = kampe.filter(k => k.resultat === 'kommende')
