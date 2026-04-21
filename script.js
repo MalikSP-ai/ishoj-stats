@@ -38,7 +38,9 @@ let state = {
   currentView: 'kampe',
   currentKamp: null,
   currentSection: 'stats',
-  saveTimer: null
+  saveTimer: null,
+  darkMode: false,
+  boardExpanded: null
 };
 
 // ── INIT ─────────────────────────────────────────────────────────
@@ -57,6 +59,7 @@ function mergeStateFromApi(raw) {
 }
 
 async function init() {
+  initDarkMode();
   state.data = {
     kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
     spillere: DEFAULT_SPILLERE,
@@ -268,11 +271,23 @@ function renderHeaderStats() {
   const vandt = played.filter(k => k.resultat === 'vandt').length;
   const maal = played.reduce((s, k) => s + (k.maal_for || 0), 0);
   const kommende = kampe.filter(k => k.resultat === 'kommende').length;
+
+  const formPills = played.slice(-5).map(k => {
+    if (k.resultat === 'vandt')    return '<span class="form-pill vandt">V</span>';
+    if (k.resultat === 'uafgjort') return '<span class="form-pill uafgjort">U</span>';
+    return '<span class="form-pill tabte">T</span>';
+  }).join('');
+
+  const formStrip = played.length > 0
+    ? `<div class="form-strip"><span class="form-label">FORM</span>${formPills}</div>`
+    : '';
+
   document.getElementById('header-stats').innerHTML = `
     <div class="stat-pill"><div class="stat-pill-val">${played.length}</div><div class="stat-pill-lbl">KAMPE</div></div>
     <div class="stat-pill"><div class="stat-pill-val">${vandt}</div><div class="stat-pill-lbl">SEJRE</div></div>
     <div class="stat-pill"><div class="stat-pill-val">${maal}</div><div class="stat-pill-lbl">MÅL</div></div>
     <div class="stat-pill"><div class="stat-pill-val">${kommende}</div><div class="stat-pill-lbl">KOMMENDE</div></div>
+    ${formStrip}
   `;
 }
 
@@ -288,7 +303,9 @@ function renderKampe(content) {
     html += `<button class="btn-ghost" style="width:100%;margin-bottom:14px;border:1px dashed #ddd;border-radius:12px" onclick="adminSpillere()">👥 Rediger spillerliste</button>`;
   }
 
-  const kommende = kampe.filter(k => k.resultat === 'kommende');
+  const kommende = kampe.filter(k => k.resultat === 'kommende')
+    .sort((a, b) => new Date(a.dato) - new Date(b.dato));
+  const næsteKampId = kommende.length > 0 ? kommende[0].id : null;
   const spillede = kampe.filter(k => k.resultat !== 'kommende').slice().reverse();
 
   if (kampe.length === 0) {
@@ -297,28 +314,40 @@ function renderKampe(content) {
 
   if (kommende.length > 0) {
     html += `<div class="section-label">KOMMENDE</div>`;
-    kommende.forEach(k => { html += kampCard(k); });
+    kommende.forEach(k => { html += kampCard(k, k.id === næsteKampId); });
   }
   if (spillede.length > 0) {
     html += `<div class="section-label">RESULTATER</div>`;
-    spillede.forEach(k => { html += kampCard(k); });
+    spillede.forEach(k => { html += kampCard(k, false); });
   }
 
   content.innerHTML = html;
 }
 
-function kampCard(k) {
+function kampCard(k, isNæste = false) {
   const ishoj = '<span class="ishoj">ISHØJ IF</span>';
   const left  = k.hjemmeude === 'H' ? ishoj : k.modstander;
   const right = k.hjemmeude === 'H' ? k.modstander : ishoj;
-  const score = k.resultat !== 'kommende' ? `<div class="kamp-score">${k.maal_for ?? '?'}–${k.maal_imod ?? '?'}</div>` : '';
   const dato  = k.dato ? new Date(k.dato).toLocaleDateString('da-DK', { weekday:'short', day:'numeric', month:'short' }) : '';
+
+  let rightCol;
+  if (k.resultat === 'kommende') {
+    const days = daysUntil(k.dato);
+    const daysLabel = days === 0 ? 'I dag! 🔥' : days === 1 ? 'I morgen' : `om ${days} dage`;
+    rightCol = `
+      <div class="result-badge kommende">Kommende</div>
+      <div class="countdown-badge${isNæste ? ' næste' : ''}">${daysLabel}</div>`;
+  } else {
+    rightCol = `
+      <div class="result-badge ${k.resultat}">${resultLabel(k.resultat)}</div>
+      <div class="kamp-score">${k.maal_for ?? '?'}–${k.maal_imod ?? '?'}</div>`;
+  }
 
   const spillere = state.data.spillere || [];
   const topChips = spillere.flatMap(navn => {
     const s = k.spillere?.[navn]; if (!s) return [];
     const chips = [];
-    if (s.maal > 0) chips.push(`<div class="preview-chip">⚽ <strong>${s.maal}</strong> ${navn.split(' ')[0]}</div>`);
+    if (s.maal > 0)    chips.push(`<div class="preview-chip">⚽ <strong>${s.maal}</strong> ${navn.split(' ')[0]}</div>`);
     if (s.assists > 0) chips.push(`<div class="preview-chip">🅰️ <strong>${s.assists}</strong> ${navn.split(' ')[0]}</div>`);
     return chips;
   }).slice(0, 4).join('');
@@ -334,7 +363,7 @@ function kampCard(k) {
     </div>` : '';
 
   return `
-    <div class="kamp-card" onclick="openKamp(${k.id})">
+    <div class="kamp-card${isNæste ? ' næste-kamp' : ''}" onclick="openKamp(${k.id})">
       <div class="kamp-card-inner">
         <div class="kamp-top">
           <div>
@@ -342,8 +371,7 @@ function kampCard(k) {
             <div class="kamp-title">${left} vs ${right}</div>
           </div>
           <div style="text-align:right">
-            <div class="result-badge ${k.resultat}">${resultLabel(k.resultat)}</div>
-            ${score}
+            ${rightCol}
           </div>
         </div>
         ${topChips ? `<div class="kamp-preview">${topChips}</div>` : ''}
@@ -392,9 +420,9 @@ function renderDetailHeader() {
 
 function renderKampDetail() {
   const content = document.getElementById('content');
-  if (state.currentSection === 'stats') renderStats(content);
+  if (state.currentSection === 'stats')  renderStats(content);
   else if (state.currentSection === 'bøder') renderKampBøder(content);
-  else if (state.currentSection === 'motm') renderMOTM(content);
+  else if (state.currentSection === 'motm')  renderMOTM(content);
 }
 
 function renderStats(content) {
@@ -403,10 +431,10 @@ function renderStats(content) {
   const spillere = state.data.spillere || [];
 
   const statDef = [
-    { key:'maal',      icon:'⚽', label:'MÅL', color:'#22c55e' },
-    { key:'assists',   icon:'🅰️', label:'ASS', color:'#3b82f6' },
-    { key:'gule_kort', icon:'🟨', label:'GUL', color:'#eab308' },
-    { key:'rode_kort', icon:'🟥', label:'RØD', color:'#ef4444' },
+    { key:'maal',        icon:'⚽', label:'MÅL', color:'#22c55e' },
+    { key:'assists',     icon:'🅰️', label:'ASS', color:'#3b82f6' },
+    { key:'gule_kort',   icon:'🟨', label:'GUL', color:'#eab308' },
+    { key:'rode_kort',   icon:'🟥', label:'RØD', color:'#ef4444' },
     { key:'clean_sheet', icon:'🧤', label:'RED', color:'#a855f7' }
   ];
 
@@ -528,21 +556,27 @@ function renderSæson(content) {
 
   kampe.forEach(k => spillere.forEach(n => {
     const s = k.spillere?.[n]; if (!s) return;
-    stats[n].maal      += s.maal      || 0;
-    stats[n].assists   += s.assists   || 0;
-    stats[n].gule_kort += s.gule_kort || 0;
-    stats[n].rode_kort += s.rode_kort || 0;
+    stats[n].maal        += s.maal        || 0;
+    stats[n].assists     += s.assists     || 0;
+    stats[n].gule_kort   += s.gule_kort   || 0;
+    stats[n].rode_kort   += s.rode_kort   || 0;
     stats[n].clean_sheet += s.clean_sheet || 0;
   }));
 
   const board = (title, key, suffix, color) => {
-    const rows = Object.entries(stats).sort((a,b) => b[1][key]-a[1][key]).filter(([,s]) => s[key] > 0).slice(0,5);
+    const isExpanded = state.boardExpanded === key;
+    const rows = Object.entries(stats).sort((a,b) => b[1][key]-a[1][key]).filter(([,s]) => s[key] > 0);
+    const displayRows = isExpanded ? rows : rows.slice(0, 5);
+    const hasMore = rows.length > 5;
     return `
       <div class="leaderboard-card">
-        <div class="leaderboard-title">${title}</div>
-        ${rows.length === 0
+        <div class="leaderboard-title" onclick="toggleBoard('${key}')">
+          ${title}
+          ${hasMore ? `<span class="board-toggle">${isExpanded ? '▲ Færre' : `▼ Alle (${rows.length})`}</span>` : ''}
+        </div>
+        ${displayRows.length === 0
           ? '<div class="leaderboard-empty">Ingen data endnu</div>'
-          : rows.map(([navn, s], i) => `
+          : displayRows.map(([navn, s], i) => `
             <div class="leaderboard-row">
               <div class="leaderboard-rank">${i+1}.</div>
               <div class="leaderboard-name">${navn}</div>
@@ -551,11 +585,37 @@ function renderSæson(content) {
       </div>`;
   };
 
+  // Aktivitets-streak board
+  const streakRows = spillere
+    .map(navn => [navn, spillerStreak(navn)])
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, s]) => s > 0);
+  const isStreakExpanded = state.boardExpanded === 'streak';
+  const displayStreakRows = isStreakExpanded ? streakRows : streakRows.slice(0, 5);
+  const hasMoreStreak = streakRows.length > 5;
+
+  const streakBoard = `
+    <div class="leaderboard-card">
+      <div class="leaderboard-title" onclick="toggleBoard('streak')">
+        🔥 Aktive spillere
+        ${hasMoreStreak ? `<span class="board-toggle">${isStreakExpanded ? '▲ Færre' : `▼ Alle (${streakRows.length})`}</span>` : ''}
+      </div>
+      ${displayStreakRows.length === 0
+        ? '<div class="leaderboard-empty">Ingen data endnu</div>'
+        : displayStreakRows.map(([navn, streak], i) => `
+          <div class="leaderboard-row">
+            <div class="leaderboard-rank">${i+1}.</div>
+            <div class="leaderboard-name">${navn}</div>
+            <div class="leaderboard-val" style="background:#f9731622;color:#f97316">${streak} kamp${streak !== 1 ? 'e' : ''}</div>
+          </div>`).join('')}
+    </div>`;
+
   content.innerHTML =
-    board('⚽ Topscorere',     'maal',      ' mål', '#22c55e') +
-    board('🅰️ Flest assists',  'assists',   ' ass', '#3b82f6') +
-    board('🧤 Rent bur',         'clean_sheet',' stk', '#a855f7') +
-    board('🟨 Gule kort',      'gule_kort', ' stk', '#eab308');
+    board('⚽ Topscorere',    'maal',       ' mål', '#22c55e') +
+    board('🅰️ Flest assists', 'assists',    ' ass', '#3b82f6') +
+    board('🧤 Rent bur',      'clean_sheet',' stk', '#a855f7') +
+    board('🟨 Gule kort',     'gule_kort',  ' stk', '#eab308') +
+    streakBoard;
 }
 
 // ── BØDER VIEW ────────────────────────────────────────────────────
@@ -615,11 +675,8 @@ function addKamp() {
     modstander: 'Ny modstander',
     hjemmeude: 'H',
     resultat: 'kommende',
-    maal_for: 0,
-    maal_imod: 0,
-    spillere: {},
-    boeder: {},
-    motm: null
+    maal_for: 0, maal_imod: 0,
+    spillere: {}, boeder: {}, motm: null
   });
   scheduleSave();
   renderAll();
@@ -697,6 +754,78 @@ function setMOTM(navn) {
   scheduleSave();
   renderMOTM(document.getElementById('content'));
 }
+
+// ── HELPERS ───────────────────────────────────────────────────────
+
+function daysUntil(dato) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dato + 'T00:00:00'); d.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+function spillerStreak(navn) {
+  const kampe = (state.data.kampe || [])
+    .filter(k => k.resultat !== 'kommende')
+    .sort((a, b) => new Date(b.dato) - new Date(a.dato));
+  let streak = 0;
+  for (const k of kampe) {
+    const s = k.spillere?.[navn];
+    if (s && Object.values(s).some(v => v > 0)) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function toggleBoard(key) {
+  state.boardExpanded = state.boardExpanded === key ? null : key;
+  renderContent();
+}
+
+// ── DARK MODE ─────────────────────────────────────────────────────
+
+function initDarkMode() {
+  if (localStorage.getItem('darkMode') === '1') {
+    document.body.classList.add('dark');
+    state.darkMode = true;
+    document.getElementById('dark-mode-btn').textContent = '☀️';
+  }
+}
+
+function toggleDarkMode() {
+  state.darkMode = !state.darkMode;
+  document.body.classList.toggle('dark', state.darkMode);
+  localStorage.setItem('darkMode', state.darkMode ? '1' : '0');
+  document.getElementById('dark-mode-btn').textContent = state.darkMode ? '☀️' : '🌙';
+}
+
+// ── PULL TO REFRESH ───────────────────────────────────────────────
+
+let _ptStartY = 0;
+let _ptActive = false;
+
+document.addEventListener('touchstart', e => {
+  _ptStartY = e.touches[0].clientY;
+  _ptActive = false;
+}, { passive: true });
+
+document.addEventListener('touchmove', e => {
+  const delta = e.touches[0].clientY - _ptStartY;
+  if (delta > 60 && window.scrollY === 0 && !_ptActive) {
+    _ptActive = true;
+    document.getElementById('pull-indicator').classList.remove('hidden');
+  }
+}, { passive: true });
+
+document.addEventListener('touchend', async () => {
+  if (!_ptActive) return;
+  _ptActive = false;
+  document.getElementById('pull-indicator').classList.add('hidden');
+  showToast('Opdaterer...', 2000);
+  const raw = await apiGet();
+  mergeStateFromApi(raw);
+  renderAll();
+  showToast('Opdateret ✓');
+});
 
 // ── TOAST & EVENTS ────────────────────────────────────────────────
 

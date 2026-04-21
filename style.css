@@ -381,3 +381,94 @@ body {
 .flex-1 { flex: 1; }
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 input { outline: none; }
+
+/* ── DARK MODE ── */
+body.dark {
+  --bg: #111114;
+  --white: #1c1c1e;
+  --text: #f2f2f7;
+  --muted: #8e8e93;
+  --border: #2c2c2e;
+  --shadow: 0 1px 6px rgba(0,0,0,0.4);
+}
+body.dark .main-nav              { background: #1c1c1e; border-color: #2c2c2e; }
+body.dark .nav-btn               { color: #8e8e93; }
+body.dark .nav-btn.active        { color: var(--red); }
+body.dark .kamp-card             { background: #1c1c1e; }
+body.dark .kamp-preview          { border-color: #2c2c2e; }
+body.dark .preview-chip          { background: #2c2c2e; color: #f2f2f7; }
+body.dark .result-badge.kommende { background: #2c2c2e; color: #8e8e93; }
+body.dark .result-badge.vandt    { background: #0d2b1a; color: var(--green); }
+body.dark .result-badge.tabte    { background: #2b0d0d; color: #ef4444; }
+body.dark .result-badge.uafgjort { background: #2b220d; color: var(--yellow); }
+body.dark .spiller-card          { background: #1c1c1e; }
+body.dark .spiller-card.has-stats { border-color: #5a1010; }
+body.dark .stats-section         { border-color: #2c2c2e; }
+body.dark .stat-btn-minus        { background: #2c2c2e; color: #8e8e93; }
+body.dark .leaderboard-card      { background: #1c1c1e; }
+body.dark .takster-card          { background: #1c1c1e; }
+body.dark .takst-row             { border-color: #2c2c2e; }
+body.dark .bøde-spiller-card     { background: #1c1c1e; }
+body.dark .motm-card             { background: #1c1c1e; border-color: #2c2c2e; }
+body.dark .motm-card.selected    { background: #2b2200; border-color: #ffc107; }
+body.dark .modal-box             { background: #1c1c1e; }
+body.dark .modal-input           { background: #2c2c2e; border-color: #3c3c3e; color: #f2f2f7; }
+body.dark .modal-input::placeholder { color: #555; }
+body.dark .section-label         { color: #555; }
+
+/* ── DARK MODE BUTTON ── */
+.dark-mode-btn {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 20px; padding: 7px 10px; color: #fff;
+  font-size: 15px; cursor: pointer; font-family: var(--font-body);
+  transition: background 0.2s; margin-right: 6px; line-height: 1;
+}
+
+/* ── FORM STRIP ── */
+.header-stats { flex-wrap: wrap; }
+.form-strip {
+  flex: 0 0 100%; display: flex; align-items: center; gap: 5px; padding-top: 6px;
+}
+.form-label {
+  font-size: 10px; opacity: 0.6; letter-spacing: 2px; color: #fff; margin-right: 4px;
+}
+.form-pill {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: #fff;
+}
+.form-pill.vandt    { background: var(--green); }
+.form-pill.uafgjort { background: var(--yellow); }
+.form-pill.tabte    { background: #ef4444; }
+
+/* ── COUNTDOWN BADGE ── */
+.countdown-badge {
+  display: inline-block; font-size: 11px; color: var(--muted);
+  margin-top: 3px; font-weight: 500;
+}
+.countdown-badge.næste {
+  background: var(--red); color: #fff; font-weight: 700;
+  border-radius: 20px; padding: 2px 9px;
+  animation: pulseBadge 2s ease-in-out infinite;
+}
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.kamp-card.næste-kamp {
+  border: 2px solid var(--red);
+  box-shadow: 0 0 0 4px rgba(184,28,28,0.1), var(--shadow);
+}
+
+/* ── PULL INDICATOR ── */
+.pull-indicator {
+  text-align: center; padding: 12px;
+  font-size: 12px; color: var(--muted); letter-spacing: 1px;
+}
+
+/* ── LEADERBOARD EXPAND ── */
+.leaderboard-title {
+  cursor: pointer; user-select: none;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.board-toggle { font-size: 11px; color: var(--muted); font-weight: 400; }
