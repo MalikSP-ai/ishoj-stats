@@ -472,3 +472,21 @@ body.dark .section-label         { color: #555; }
   display: flex; justify-content: space-between; align-items: center;
 }
 .board-toggle { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+/* ── PLAYER BREAKDOWN ── */
+.leaderboard-row.clickable { cursor: pointer; }
+.leaderboard-row.clickable:active { opacity: 0.7; }
+.expand-arrow { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.player-breakdown {
+  background: var(--bg); border-radius: 10px;
+  margin: 0 0 4px; padding: 6px 10px;
+}
+.player-match-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.player-match-row:last-child { border-bottom: none; }
+.player-match-opp { flex: 1; color: var(--text); font-weight: 500; }
+.player-match-date { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+.player-match-val { font-weight: 800; font-size: 13px; flex-shrink: 0; min-width: 36px; text-align: right; }
+body.dark .player-breakdown { background: #0d0d0f; }

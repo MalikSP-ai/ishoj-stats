@@ -40,7 +40,8 @@ let state = {
   currentSection: 'stats',
   saveTimer: null,
   darkMode: false,
-  boardExpanded: null
+  boardExpanded: null,
+  boardPlayerExpanded: null
 };
 
 // ── INIT ─────────────────────────────────────────────────────────
@@ -563,6 +564,22 @@ function renderSæson(content) {
     stats[n].clean_sheet += s.clean_sheet || 0;
   }));
 
+  // Shared helper: match breakdown for a stat key
+  const matchBreakdown = (navn, key, color, suffix) => {
+    return kampe
+      .filter(k => (k.spillere?.[navn]?.[key] || 0) > 0)
+      .sort((a, b) => new Date(a.dato) - new Date(b.dato))
+      .map(k => {
+        const val = k.spillere[navn][key];
+        const dato = new Date(k.dato).toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+        return `<div class="player-match-row">
+          <span class="player-match-opp">vs ${k.modstander}</span>
+          <span class="player-match-date">${dato}</span>
+          <span class="player-match-val" style="color:${color}">${val}${suffix}</span>
+        </div>`;
+      }).join('');
+  };
+
   const board = (title, key, suffix, color) => {
     const isExpanded = state.boardExpanded === key;
     const rows = Object.entries(stats).sort((a,b) => b[1][key]-a[1][key]).filter(([,s]) => s[key] > 0);
@@ -576,14 +593,63 @@ function renderSæson(content) {
         </div>
         ${displayRows.length === 0
           ? '<div class="leaderboard-empty">Ingen data endnu</div>'
-          : displayRows.map(([navn, s], i) => `
-            <div class="leaderboard-row">
-              <div class="leaderboard-rank">${i+1}.</div>
-              <div class="leaderboard-name">${navn}</div>
-              <div class="leaderboard-val" style="background:${color}22;color:${color}">${s[key]}${suffix}</div>
-            </div>`).join('')}
+          : displayRows.map(([navn, s], i) => {
+              const pe = state.boardPlayerExpanded;
+              const isOpen = pe && pe.key === key && pe.navn === navn;
+              const breakdown = isOpen ? matchBreakdown(navn, key, color, suffix) : '';
+              return `
+                <div class="leaderboard-row clickable" onclick="togglePlayerBoard('${key}','${navn}')">
+                  <div class="leaderboard-rank">${i+1}.</div>
+                  <div class="leaderboard-name">${navn} <span class="expand-arrow">${isOpen ? '▲' : '›'}</span></div>
+                  <div class="leaderboard-val" style="background:${color}22;color:${color}">${s[key]}${suffix}</div>
+                </div>
+                ${isOpen ? `<div class="player-breakdown">${breakdown}</div>` : ''}`;
+            }).join('')}
       </div>`;
   };
+
+  // MOTM board
+  const motmCounts = {};
+  spillere.forEach(n => { motmCounts[n] = 0; });
+  kampe.forEach(k => { if (k.motm && motmCounts[k.motm] !== undefined) motmCounts[k.motm]++; });
+
+  const motmRows = Object.entries(motmCounts)
+    .sort((a,b) => b[1]-a[1]).filter(([,c]) => c > 0);
+  const isMotmExpanded = state.boardExpanded === 'motm';
+  const displayMotmRows = isMotmExpanded ? motmRows : motmRows.slice(0, 5);
+
+  const motmBoard = `
+    <div class="leaderboard-card">
+      <div class="leaderboard-title" onclick="toggleBoard('motm')">
+        ⭐ MOTM
+        ${motmRows.length > 5 ? `<span class="board-toggle">${isMotmExpanded ? '▲ Færre' : `▼ Alle (${motmRows.length})`}</span>` : ''}
+      </div>
+      ${displayMotmRows.length === 0
+        ? '<div class="leaderboard-empty">Ingen data endnu</div>'
+        : displayMotmRows.map(([navn, count], i) => {
+            const pe = state.boardPlayerExpanded;
+            const isOpen = pe && pe.key === 'motm' && pe.navn === navn;
+            const breakdown = isOpen
+              ? kampe.filter(k => k.motm === navn)
+                  .sort((a,b) => new Date(a.dato) - new Date(b.dato))
+                  .map(k => {
+                    const dato = new Date(k.dato).toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+                    return `<div class="player-match-row">
+                      <span class="player-match-opp">vs ${k.modstander}</span>
+                      <span class="player-match-date">${dato}</span>
+                      <span class="player-match-val" style="color:#eab308">⭐</span>
+                    </div>`;
+                  }).join('')
+              : '';
+            return `
+              <div class="leaderboard-row clickable" onclick="togglePlayerBoard('motm','${navn}')">
+                <div class="leaderboard-rank">${i+1}.</div>
+                <div class="leaderboard-name">${navn} <span class="expand-arrow">${isOpen ? '▲' : '›'}</span></div>
+                <div class="leaderboard-val" style="background:#eab30822;color:#eab308">${count} gang${count !== 1 ? 'e' : ''}</div>
+              </div>
+              ${isOpen ? `<div class="player-breakdown">${breakdown}</div>` : ''}`;
+          }).join('')}
+    </div>`;
 
   // Aktivitets-streak board
   const streakRows = spillere
@@ -615,6 +681,7 @@ function renderSæson(content) {
     board('🅰️ Flest assists', 'assists',    ' ass', '#3b82f6') +
     board('🧤 Rent bur',      'clean_sheet',' stk', '#a855f7') +
     board('🟨 Gule kort',     'gule_kort',  ' stk', '#eab308') +
+    motmBoard +
     streakBoard;
 }
 
@@ -778,6 +845,12 @@ function spillerStreak(navn) {
 
 function toggleBoard(key) {
   state.boardExpanded = state.boardExpanded === key ? null : key;
+  renderContent();
+}
+
+function togglePlayerBoard(key, navn) {
+  const pe = state.boardPlayerExpanded;
+  state.boardPlayerExpanded = (pe && pe.key === key && pe.navn === navn) ? null : { key, navn };
   renderContent();
 }
 
