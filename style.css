@@ -261,6 +261,32 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .takster-title { font-size: 12px; font-weight: 700; color: #555; margin-bottom: 10px; }
+.takster-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.takster-header-row .takster-title { margin-bottom: 0; }
+.takst-add-btn {
+  background: var(--red); color: #fff; border: none; border-radius: 20px;
+  padding: 4px 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: var(--font-body);
+}
+.takst-row-edit { align-items: center; }
+.takst-type-name {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 13px; font-family: var(--font-body); color: var(--text);
+  text-align: left; flex: 1;
+}
+.takst-edit-icon { font-size: 11px; opacity: 0.4; }
+.takst-edit-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.takst-belob-input {
+  width: 54px; text-align: center; font-size: 14px; font-weight: 700;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 4px 6px; font-family: var(--font-body); color: var(--red);
+  background: var(--bg);
+}
+.takst-slet-btn {
+  background: none; border: none; font-size: 16px; cursor: pointer;
+  padding: 2px; opacity: 0.5; transition: opacity 0.15s;
+}
+.takst-slet-btn:hover { opacity: 1; }
 .takst-row {
   display: flex; justify-content: space-between;
   padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px;

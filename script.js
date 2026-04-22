@@ -750,18 +750,38 @@ function renderBøder(content) {
   const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
+  const taksterHTML = state.isAdmin
+    ? `<div class="takster-card">
+        <div class="takster-header-row">
+          <div class="takster-title">BØDETAKSTER</div>
+          <button class="takst-add-btn" onclick="tilfoejTakst()">+ Tilføj</button>
+        </div>
+        ${Object.entries(takster).map(([type, kr]) => {
+          const safe = type.replace(/'/g, "\\'");
+          return `<div class="takst-row takst-row-edit">
+            <button class="takst-type-name" onclick="omdøbTakst('${safe}')">${type} <span class="takst-edit-icon">✏️</span></button>
+            <div class="takst-edit-right">
+              <input class="takst-belob-input" type="number" min="0" value="${kr}"
+                oninput="setTakstBelob('${safe}',this.value)"> kr.
+              <button class="takst-slet-btn" onclick="sletTakst('${safe}')">🗑</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`
+    : `<div class="takster-card">
+        <div class="takster-title">BØDETAKSTER</div>
+        ${Object.entries(takster).map(([type, kr]) => `
+          <div class="takst-row"><span>${type}</span><span class="takst-amount">${kr} kr.</span></div>
+        `).join('')}
+      </div>`;
+
   content.innerHTML = `
     <div class="bøde-hero">
       <div class="bøde-hero-label">SÆSON TOTAL</div>
       <div class="bøde-hero-amount">${grandTotal} kr.</div>
       <div class="bøde-hero-sub">${kampe.length} kampe registreret</div>
     </div>
-    <div class="takster-card">
-      <div class="takster-title">BØDETAKSTER</div>
-      ${Object.entries(takster).map(([type, kr]) => `
-        <div class="takst-row"><span>${type}</span><span class="takst-amount">${kr} kr.</span></div>
-      `).join('')}
-    </div>
+    ${taksterHTML}
     <div class="section-label">SPILLERE</div>
     ${sorted.map(([navn, total], i) => `
       <div class="bøde-spiller-card ${total === 0 ? 'ingen' : ''}">
@@ -821,6 +841,56 @@ function adminSpillere() {
   state.data.spillere = navne.split(',').map(n => n.trim()).filter(Boolean);
   scheduleSave();
   renderAll();
+}
+
+function tilfoejTakst() {
+  const navn = prompt('Navn på ny bødetype:');
+  if (!navn || !navn.trim()) return;
+  const trimmed = navn.trim();
+  if (state.data.boede_takster[trimmed] !== undefined) { showToast('Bødetypen findes allerede'); return; }
+  const belob = prompt(`Beløb for "${trimmed}" (kr.):`, '50');
+  if (belob === null) return;
+  state.data.boede_takster[trimmed] = parseInt(belob) || 0;
+  scheduleSave();
+  renderContent();
+  showToast(`${trimmed} tilføjet ✓`);
+}
+
+function omdøbTakst(gammeltNavn) {
+  const nytNavn = prompt('Omdøb bødetype:', gammeltNavn);
+  if (!nytNavn || !nytNavn.trim() || nytNavn.trim() === gammeltNavn) return;
+  const trimmed = nytNavn.trim();
+  if (state.data.boede_takster[trimmed] !== undefined) { showToast('Bødetypen findes allerede'); return; }
+  const kr = state.data.boede_takster[gammeltNavn];
+  delete state.data.boede_takster[gammeltNavn];
+  state.data.boede_takster[trimmed] = kr;
+  state.data.kampe.forEach(k => {
+    if (!k.boeder) return;
+    Object.keys(k.boeder).forEach(spiller => {
+      k.boeder[spiller] = k.boeder[spiller].map(b => b === gammeltNavn ? trimmed : b);
+    });
+  });
+  scheduleSave();
+  renderContent();
+}
+
+function setTakstBelob(type, val) {
+  state.data.boede_takster[type] = parseInt(val) || 0;
+  scheduleSave();
+}
+
+function sletTakst(type) {
+  if (!confirm(`Slet bødetype "${type}"?\nEksisterende bøder af denne type fjernes også.`)) return;
+  delete state.data.boede_takster[type];
+  state.data.kampe.forEach(k => {
+    if (!k.boeder) return;
+    Object.keys(k.boeder).forEach(spiller => {
+      k.boeder[spiller] = k.boeder[spiller].filter(b => b !== type);
+    });
+  });
+  scheduleSave();
+  renderContent();
+  showToast(`${type} slettet`);
 }
 
 function setResultat(r) {
