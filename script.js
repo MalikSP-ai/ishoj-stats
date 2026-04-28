@@ -72,6 +72,7 @@ async function init() {
     const raw = await apiGet();
     mergeStateFromApi(raw);
   } catch (e) { /* beholder defaults */ }
+  loadReferaterFromStorage();
   document.getElementById('loading-screen').classList.add('hidden');
   renderAll();
 }
@@ -89,6 +90,7 @@ setTimeout(() => {
         betalte_boeder: {}
       };
     }
+    loadReferaterFromStorage();
     renderAll();
   }
 }, 5000);
@@ -126,7 +128,12 @@ async function apiGet() {
 
 async function apiSave() {
   try {
-    const url = `${API_URL}?action=saveData&password=${encodeURIComponent(state.adminPassword)}&data=${encodeURIComponent(JSON.stringify(state.data))}`;
+    // Strip referat from kampe — saved in localStorage instead to avoid URL length limits
+    const dataToSave = {
+      ...state.data,
+      kampe: state.data.kampe.map(({ referat, ...k }) => k)
+    };
+    const url = `${API_URL}?action=saveData&password=${encodeURIComponent(state.adminPassword)}&data=${encodeURIComponent(JSON.stringify(dataToSave))}`;
     return await jsonp(url);
   } catch (e) {
     return { success: false, error: e.toString() };
@@ -945,7 +952,14 @@ function setReferat(val) {
   const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
   if (!kamp) return;
   kamp.referat = val;
-  scheduleSave();
+  localStorage.setItem(`referat_${kamp.id}`, val);
+}
+
+function loadReferaterFromStorage() {
+  (state.data.kampe || []).forEach(k => {
+    const saved = localStorage.getItem(`referat_${k.id}`);
+    if (saved !== null) k.referat = saved;
+  });
 }
 
 // ── AI-RAPPORT ────────────────────────────────────────────────────
