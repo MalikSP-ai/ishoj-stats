@@ -59,7 +59,15 @@ function mergeStateFromApi(raw) {
   });
   if (raw.spillere && raw.spillere.length > 0) state.data.spillere = raw.spillere;
   if (raw.boede_takster) state.data.boede_takster = raw.boede_takster;
-  state.data.betalte_boeder = raw.betalte_boeder || state.data.betalte_boeder || {};
+  // Migrate old boolean format → per-kamp object format
+  const rawBetalte = raw.betalte_boeder || {};
+  state.data.betalte_boeder = {};
+  Object.keys(rawBetalte).forEach(navn => {
+    if (rawBetalte[navn] !== null && typeof rawBetalte[navn] === 'object') {
+      state.data.betalte_boeder[navn] = rawBetalte[navn];
+    }
+    // old boolean format discarded — can't know which kamp was paid
+  });
 }
 
 async function init() {
@@ -974,7 +982,10 @@ function sletTakst(type) {
 
 function toggleBetaltKamp(navn, kampId) {
   if (!state.data.betalte_boeder) state.data.betalte_boeder = {};
-  if (!state.data.betalte_boeder[navn]) state.data.betalte_boeder[navn] = {};
+  // Ensure per-kamp object format (guard against stale boolean from old data)
+  if (typeof state.data.betalte_boeder[navn] !== 'object' || state.data.betalte_boeder[navn] === null) {
+    state.data.betalte_boeder[navn] = {};
+  }
   state.data.betalte_boeder[navn][String(kampId)] = !state.data.betalte_boeder[navn][String(kampId)];
   scheduleSave();
   renderContent();
