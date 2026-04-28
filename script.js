@@ -50,21 +50,23 @@ function mergeStateFromApi(raw) {
   const savedKampe = raw.kampe || [];
   state.data.kampe = KAMPE_TEMPLATE.map(template => {
     const saved = savedKampe.find(k => k.id === template.id);
-    return saved ? { ...template, ...saved } : {
+    return saved ? { ...template, ...saved, referat: saved.referat || '' } : {
       ...template, resultat: 'kommende',
-      maal_for: 0, maal_imod: 0, spillere: {}, boeder: {}, motm: null
+      maal_for: 0, maal_imod: 0, spillere: {}, boeder: {}, motm: null, referat: ''
     };
   });
   if (raw.spillere && raw.spillere.length > 0) state.data.spillere = raw.spillere;
   if (raw.boede_takster) state.data.boede_takster = raw.boede_takster;
+  state.data.betalte_boeder = raw.betalte_boeder || state.data.betalte_boeder || {};
 }
 
 async function init() {
   initDarkMode();
   state.data = {
-    kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
+    kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null, referat:'' })),
     spillere: DEFAULT_SPILLERE,
-    boede_takster: DEFAULT_TAKSTER
+    boede_takster: DEFAULT_TAKSTER,
+    betalte_boeder: {}
   };
   try {
     const raw = await apiGet();
@@ -81,9 +83,10 @@ setTimeout(() => {
     ls.classList.add('hidden');
     if (!state.data) {
       state.data = {
-        kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null })),
+        kampe: KAMPE_TEMPLATE.map(t => ({ ...t, resultat:'kommende', maal_for:0, maal_imod:0, spillere:{}, boeder:{}, motm:null, referat:'' })),
         spillere: DEFAULT_SPILLERE,
-        boede_takster: DEFAULT_TAKSTER
+        boede_takster: DEFAULT_TAKSTER,
+        betalte_boeder: {}
       };
     }
     renderAll();
@@ -441,9 +444,10 @@ function renderDetailHeader() {
 
 function renderKampDetail() {
   const content = document.getElementById('content');
-  if (state.currentSection === 'stats')  renderStats(content);
+  if (state.currentSection === 'stats')      renderStats(content);
   else if (state.currentSection === 'bøder') renderKampBøder(content);
   else if (state.currentSection === 'motm')  renderMOTM(content);
+  else if (state.currentSection === 'referat') renderReferat(content);
 }
 
 function renderStats(content) {
@@ -570,7 +574,9 @@ function renderMOTM(content) {
 // ── SÆSON VIEW ────────────────────────────────────────────────────
 
 function renderSæson(content) {
-  const kampe = (state.data.kampe || []).filter(k => k.resultat !== 'kommende');
+  const played = (state.data.kampe || []).filter(k => k.resultat !== 'kommende');
+  const aiBtn = `<button class="ai-rapport-btn" onclick="kopierAiRapport()">🤖 Kopiér AI-rapport</button>`;
+  const kampe = played;
   const spillere = state.data.spillere || [];
   const stats = {};
   spillere.forEach(n => { stats[n] = { maal:0, assists:0, gule_kort:0, rode_kort:0, clean_sheet:0 }; });
@@ -726,6 +732,7 @@ function renderSæson(content) {
     </div>`;
 
   content.innerHTML =
+    aiBtn +
     board('⚽ Topscorere',    'maal',       ' mål', '#22c55e') +
     board('🅰️ Flest assists', 'assists',    ' ass', '#3b82f6') +
     board('🧤 Rent bur',      'clean_sheet',' stk', '#a855f7') +
@@ -747,7 +754,10 @@ function renderBøder(content) {
     (k.boeder?.[n] || []).forEach(b => { totals[n] += takster[b] || 0; });
   }));
 
+  const betalte = state.data.betalte_boeder || {};
   const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
+  const betaltTotal = Object.entries(totals).reduce((s, [n, v]) => s + (betalte[n] ? v : 0), 0);
+  const udestående = grandTotal - betaltTotal;
   const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
 
   const taksterHTML = state.isAdmin
@@ -779,19 +789,32 @@ function renderBøder(content) {
     <div class="bøde-hero">
       <div class="bøde-hero-label">SÆSON TOTAL</div>
       <div class="bøde-hero-amount">${grandTotal} kr.</div>
+      <div class="bøde-hero-pills">
+        <span class="bøde-hero-pill red">Udestående ${udestående} kr.</span>
+        <span class="bøde-hero-pill green">Betalt ${betaltTotal} kr.</span>
+      </div>
       <div class="bøde-hero-sub">${kampe.length} kampe registreret</div>
     </div>
     ${taksterHTML}
     <div class="section-label">SPILLERE</div>
-    ${sorted.map(([navn, total], i) => `
-      <div class="bøde-spiller-card ${total === 0 ? 'ingen' : ''}">
+    ${sorted.map(([navn, total], i) => {
+      const erBetalt = !!betalte[navn];
+      const safeName = navn.replace(/'/g, "\\'");
+      return `
+      <div class="bøde-spiller-card ${total === 0 ? 'ingen' : ''} ${erBetalt ? 'betalt' : ''}">
         <div class="bøde-rank">${i+1}.</div>
-        <div>
+        <div style="flex:1">
           <div class="bøde-name">${navn}</div>
-          <div class="bøde-detail">${total === 0 ? 'Ingen bøder' : 'Skylder'}</div>
+          <div class="bøde-detail">
+            ${total === 0 ? 'Ingen bøder' : erBetalt ? '<span class="betalt-label">Betalt ✓</span>' : 'Skylder'}
+          </div>
         </div>
-        <div class="bøde-amount" style="color:${total > 0 ? '#ef4444' : '#aaa'}">${total} kr.</div>
-      </div>`).join('')}`;
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="bøde-amount" style="color:${total === 0 ? '#aaa' : erBetalt ? 'var(--green)' : '#ef4444'}">${total} kr.</div>
+          ${state.isAdmin && total > 0 ? `<button class="betalt-btn ${erBetalt ? 'active' : ''}" onclick="toggleBetalt('${safeName}')">${erBetalt ? 'Fortryd' : '✓ Betalt'}</button>` : ''}
+        </div>
+      </div>`;
+    }).join('')}`;
 }
 
 // ── ADMIN ACTIONS ─────────────────────────────────────────────────
@@ -813,7 +836,7 @@ function addKamp() {
     hjemmeude: 'H',
     resultat: 'kommende',
     maal_for: 0, maal_imod: 0,
-    spillere: {}, boeder: {}, motm: null
+    spillere: {}, boeder: {}, motm: null, referat: ''
   });
   scheduleSave();
   renderAll();
@@ -891,6 +914,104 @@ function sletTakst(type) {
   scheduleSave();
   renderContent();
   showToast(`${type} slettet`);
+}
+
+function toggleBetalt(navn) {
+  if (!state.data.betalte_boeder) state.data.betalte_boeder = {};
+  state.data.betalte_boeder[navn] = !state.data.betalte_boeder[navn];
+  scheduleSave();
+  renderContent();
+}
+
+// ── REFERAT ───────────────────────────────────────────────────────
+
+function renderReferat(content) {
+  const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
+  if (!kamp) return;
+
+  if (state.isAdmin) {
+    content.innerHTML = `
+      <div class="referat-hint">Skriv trænernes referat efter kampen. Gemmes automatisk.</div>
+      <textarea class="referat-textarea" placeholder="Kampens forløb, taktiske observationer, hvad gik godt/skidt..."
+        oninput="setReferat(this.value)">${kamp.referat || ''}</textarea>`;
+  } else {
+    content.innerHTML = kamp.referat
+      ? `<div class="referat-text">${kamp.referat.replace(/\n/g, '<br>')}</div>`
+      : `<div class="referat-empty">Intet referat endnu</div>`;
+  }
+}
+
+function setReferat(val) {
+  const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
+  if (!kamp) return;
+  kamp.referat = val;
+  scheduleSave();
+}
+
+// ── AI-RAPPORT ────────────────────────────────────────────────────
+
+function kopierAiRapport() {
+  const kampe = (state.data.kampe || []).filter(k => k.resultat !== 'kommende');
+  const spillere = state.data.spillere || [];
+  const stats = {};
+  spillere.forEach(n => { stats[n] = { maal:0, assists:0, clean_sheet:0, motm:0 }; });
+  kampe.forEach(k => {
+    spillere.forEach(n => {
+      const s = k.spillere?.[n]; if (!s) return;
+      stats[n].maal        += s.maal        || 0;
+      stats[n].assists     += s.assists     || 0;
+      stats[n].clean_sheet += s.clean_sheet || 0;
+    });
+    if (k.motm && stats[k.motm]) stats[k.motm].motm++;
+  });
+
+  const topScorer = Object.entries(stats).sort((a,b) => b[1].maal - a[1].maal)[0];
+  const topAssist = Object.entries(stats).sort((a,b) => b[1].assists - a[1].assists)[0];
+  const topMotm   = Object.entries(stats).sort((a,b) => b[1].motm - a[1].motm)[0];
+
+  const sejre = kampe.filter(k => k.resultat === 'vandt').length;
+  const uafgjort = kampe.filter(k => k.resultat === 'uafgjort').length;
+  const tabte = kampe.filter(k => k.resultat === 'tabte').length;
+  const maalFor = kampe.reduce((s, k) => s + (k.hjemmeude === 'H' ? (k.maal_for||0) : (k.maal_imod||0)), 0);
+  const maalImod = kampe.reduce((s, k) => s + (k.hjemmeude === 'H' ? (k.maal_imod||0) : (k.maal_for||0)), 0);
+
+  const resultaterLines = kampe.map((k, i) => {
+    const dato = new Date(k.dato).toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+    const hjUde = k.hjemmeude === 'H' ? 'H' : 'U';
+    const score = k.hjemmeude === 'H' ? `${k.maal_for}-${k.maal_imod}` : `${k.maal_imod}-${k.maal_for}`;
+    return `${i+1}. ${dato} vs ${k.modstander} [${hjUde}] — ${score} (${k.resultat.charAt(0).toUpperCase() + k.resultat.slice(1)})`;
+  }).join('\n');
+
+  const referaterLines = kampe.map((k, i) => {
+    const dato = new Date(k.dato).toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+    return `Kamp ${i+1} — ${k.modstander} (${dato}):\n${k.referat || '(Intet referat)'}`;
+  }).join('\n\n');
+
+  const tekst = `ISHØJ IF M+40 · Forår 2026 — Sæsonrapport
+${'='.repeat(50)}
+
+RESULTATER (${kampe.length} kampe):
+${resultaterLines}
+
+Form: ${sejre}V ${uafgjort}U ${tabte}T | Mål: ${maalFor}-${maalImod}
+
+SÆSONSTATISTIK:
+- Topscorer: ${topScorer?.[0] || '—'} (${topScorer?.[1].maal || 0} mål)
+- Flest assists: ${topAssist?.[0] || '—'} (${topAssist?.[1].assists || 0} ass)
+- Flest MOTM: ${topMotm?.[1].motm > 0 ? topMotm[0] : '—'} (${topMotm?.[1].motm || 0} gange)
+
+REFERATER FRA TRÆNER:
+${referaterLines || '(Ingen referater skrevet endnu)'}
+
+${'='.repeat(50)}
+SPØRGSMÅL TIL AI:
+1. Hvad er holdets styrker og svagheder baseret på disse referater og statistikker?
+2. Hvad bør fokuseres på i træning inden næste kamp?
+3. Er der mønstre i kampene (fx bedre hjemme vs ude, eller i 1. halvleg vs 2. halvleg)?`;
+
+  navigator.clipboard.writeText(tekst)
+    .then(() => showToast('AI-rapport kopieret til clipboard ✓', 3000))
+    .catch(() => showToast('Kopiering fejlede — prøv igen'));
 }
 
 function setResultat(r) {
