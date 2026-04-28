@@ -41,7 +41,8 @@ let state = {
   saveTimer: null,
   darkMode: false,
   boardExpanded: null,
-  boardPlayerExpanded: null
+  boardPlayerExpanded: null,
+  referatTimer: null
 };
 
 // ── INIT ─────────────────────────────────────────────────────────
@@ -72,7 +73,6 @@ async function init() {
     const raw = await apiGet();
     mergeStateFromApi(raw);
   } catch (e) { /* beholder defaults */ }
-  loadReferaterFromStorage();
   document.getElementById('loading-screen').classList.add('hidden');
   renderAll();
 }
@@ -90,7 +90,6 @@ setTimeout(() => {
         betalte_boeder: {}
       };
     }
-    loadReferaterFromStorage();
     renderAll();
   }
 }, 5000);
@@ -952,14 +951,20 @@ function setReferat(val) {
   const kamp = state.data.kampe.find(k => k.id === state.currentKamp);
   if (!kamp) return;
   kamp.referat = val;
-  localStorage.setItem(`referat_${kamp.id}`, val);
+  clearTimeout(state.referatTimer);
+  state.referatTimer = setTimeout(async () => {
+    await apiSaveReferat(kamp.id, val);
+    showToast('Referat gemt ✓');
+  }, 1500);
 }
 
-function loadReferaterFromStorage() {
-  (state.data.kampe || []).forEach(k => {
-    const saved = localStorage.getItem(`referat_${k.id}`);
-    if (saved !== null) k.referat = saved;
-  });
+async function apiSaveReferat(kampId, text) {
+  try {
+    const url = `${API_URL}?action=saveReferat&password=${encodeURIComponent(state.adminPassword)}&kampId=${encodeURIComponent(kampId)}&referat=${encodeURIComponent(text)}`;
+    await jsonp(url);
+  } catch (e) {
+    showToast('Fejl — referat ikke gemt');
+  }
 }
 
 // ── AI-RAPPORT ────────────────────────────────────────────────────
