@@ -42,7 +42,8 @@ let state = {
   darkMode: false,
   boardExpanded: null,
   boardPlayerExpanded: null,
-  referatTimer: null
+  referatTimer: null,
+  bødeExpanded: {}
 };
 
 // ── INIT ─────────────────────────────────────────────────────────
@@ -754,17 +755,31 @@ function renderBøder(content) {
   const kampe = (state.data.kampe || []).filter(k => k.resultat !== 'kommende');
   const spillere = state.data.spillere || [];
   const takster = state.data.boede_takster || DEFAULT_TAKSTER;
-  const totals = {};
-  spillere.forEach(n => { totals[n] = 0; });
-  kampe.forEach(k => spillere.forEach(n => {
-    (k.boeder?.[n] || []).forEach(b => { totals[n] += takster[b] || 0; });
-  }));
-
   const betalte = state.data.betalte_boeder || {};
-  const grandTotal = Object.values(totals).reduce((s, v) => s + v, 0);
-  const betaltTotal = Object.entries(totals).reduce((s, [n, v]) => s + (betalte[n] ? v : 0), 0);
-  const udestående = grandTotal - betaltTotal;
-  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+
+  // Build per-player, per-match fine data
+  const playerKampe = {};
+  spillere.forEach(n => { playerKampe[n] = []; });
+  kampe.forEach(k => {
+    spillere.forEach(n => {
+      const boeder = k.boeder?.[n] || [];
+      const beloeb = boeder.reduce((s, b) => s + (takster[b] || 0), 0);
+      if (beloeb > 0) {
+        const erBetalt = !!(betalte[n]?.[String(k.id)]);
+        playerKampe[n].push({ kamp: k, boeder, beloeb, erBetalt });
+      }
+    });
+  });
+
+  const grandTotal    = spillere.reduce((s, n) => s + playerKampe[n].reduce((a, e) => a + e.beloeb, 0), 0);
+  const grandBetalt   = spillere.reduce((s, n) => s + playerKampe[n].filter(e => e.erBetalt).reduce((a, e) => a + e.beloeb, 0), 0);
+  const grandUdestående = grandTotal - grandBetalt;
+
+  const sorted = [...spillere].sort((a, b) => {
+    const udA = playerKampe[a].filter(e => !e.erBetalt).reduce((s, e) => s + e.beloeb, 0);
+    const udB = playerKampe[b].filter(e => !e.erBetalt).reduce((s, e) => s + e.beloeb, 0);
+    return udB - udA;
+  });
 
   const taksterHTML = state.isAdmin
     ? `<div class="takster-card">
@@ -791,36 +806,71 @@ function renderBøder(content) {
         `).join('')}
       </div>`;
 
+  const spillerRows = sorted.map(navn => {
+    const entries = playerKampe[navn];
+    const total       = entries.reduce((s, e) => s + e.beloeb, 0);
+    const betalt      = entries.filter(e => e.erBetalt).reduce((s, e) => s + e.beloeb, 0);
+    const udestående  = total - betalt;
+    const safeName    = navn.replace(/'/g, "\\'");
+    const isExpanded  = !!state.bødeExpanded[navn];
+
+    if (total === 0) return `
+      <div class="bøde-spiller-card ingen">
+        <div class="bøde-rank" style="color:#ddd">—</div>
+        <div style="flex:1"><div class="bøde-name">${navn}</div><div class="bøde-detail">Ingen bøder</div></div>
+        <div class="bøde-amount" style="color:#aaa">0 kr.</div>
+      </div>`;
+
+    const kampRows = entries.map(e => {
+      const dato = new Date(e.kamp.dato).toLocaleDateString('da-DK', { day:'numeric', month:'short' });
+      const bødeList = e.boeder.join(', ');
+      return `
+        <div class="bøde-kamp-row ${e.erBetalt ? 'betalt' : ''}">
+          <div class="bøde-kamp-info">
+            <span class="bøde-kamp-mod">vs ${e.kamp.modstander}</span>
+            <span class="bøde-kamp-dato">${dato}</span>
+            <span class="bøde-kamp-typer">${bødeList}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="font-weight:700;font-size:13px;color:${e.erBetalt ? 'var(--green)' : '#ef4444'}">${e.beloeb} kr.</span>
+            ${state.isAdmin ? `<button class="betalt-btn ${e.erBetalt ? 'active' : ''}" onclick="toggleBetaltKamp('${safeName}',${e.kamp.id})">${e.erBetalt ? '✓' : 'Betalt'}</button>` : (e.erBetalt ? '<span class="betalt-label">✓</span>' : '')}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="bøde-spiller-card ${udestående === 0 ? 'betalt' : ''}">
+        <div class="bøde-spiller-top" onclick="toggleBødeExpand('${safeName}')">
+          <div style="flex:1">
+            <div class="bøde-name">${navn}</div>
+            <div class="bøde-detail">
+              ${udestående > 0
+                ? `<span style="color:#ef4444;font-weight:700">Skylder ${udestående} kr.</span>${betalt > 0 ? ` · Betalt ${betalt} kr.` : ''}`
+                : '<span class="betalt-label">Alt betalt ✓</span>'}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="bøde-amount" style="color:${udestående > 0 ? '#ef4444' : 'var(--green)'}">${total} kr.</div>
+            <span class="expand-arrow">${isExpanded ? '▲' : '▼'}</span>
+          </div>
+        </div>
+        ${isExpanded ? `<div class="bøde-kamp-breakdown">${kampRows}</div>` : ''}
+      </div>`;
+  }).join('');
+
   content.innerHTML = `
     <div class="bøde-hero">
       <div class="bøde-hero-label">SÆSON TOTAL</div>
       <div class="bøde-hero-amount">${grandTotal} kr.</div>
       <div class="bøde-hero-pills">
-        <span class="bøde-hero-pill red">Udestående ${udestående} kr.</span>
-        <span class="bøde-hero-pill green">Betalt ${betaltTotal} kr.</span>
+        <span class="bøde-hero-pill red">Udestående ${grandUdestående} kr.</span>
+        <span class="bøde-hero-pill green">Betalt ${grandBetalt} kr.</span>
       </div>
       <div class="bøde-hero-sub">${kampe.length} kampe registreret</div>
     </div>
     ${taksterHTML}
     <div class="section-label">SPILLERE</div>
-    ${sorted.map(([navn, total], i) => {
-      const erBetalt = !!betalte[navn];
-      const safeName = navn.replace(/'/g, "\\'");
-      return `
-      <div class="bøde-spiller-card ${total === 0 ? 'ingen' : ''} ${erBetalt ? 'betalt' : ''}">
-        <div class="bøde-rank">${i+1}.</div>
-        <div style="flex:1">
-          <div class="bøde-name">${navn}</div>
-          <div class="bøde-detail">
-            ${total === 0 ? 'Ingen bøder' : erBetalt ? '<span class="betalt-label">Betalt ✓</span>' : 'Skylder'}
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div class="bøde-amount" style="color:${total === 0 ? '#aaa' : erBetalt ? 'var(--green)' : '#ef4444'}">${total} kr.</div>
-          ${state.isAdmin && total > 0 ? `<button class="betalt-btn ${erBetalt ? 'active' : ''}" onclick="toggleBetalt('${safeName}')">${erBetalt ? 'Fortryd' : '✓ Betalt'}</button>` : ''}
-        </div>
-      </div>`;
-    }).join('')}`;
+    ${spillerRows}`;
 }
 
 // ── ADMIN ACTIONS ─────────────────────────────────────────────────
@@ -922,10 +972,16 @@ function sletTakst(type) {
   showToast(`${type} slettet`);
 }
 
-function toggleBetalt(navn) {
+function toggleBetaltKamp(navn, kampId) {
   if (!state.data.betalte_boeder) state.data.betalte_boeder = {};
-  state.data.betalte_boeder[navn] = !state.data.betalte_boeder[navn];
+  if (!state.data.betalte_boeder[navn]) state.data.betalte_boeder[navn] = {};
+  state.data.betalte_boeder[navn][String(kampId)] = !state.data.betalte_boeder[navn][String(kampId)];
   scheduleSave();
+  renderContent();
+}
+
+function toggleBødeExpand(navn) {
+  state.bødeExpanded[navn] = !state.bødeExpanded[navn];
   renderContent();
 }
 

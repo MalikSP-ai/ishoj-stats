@@ -525,15 +525,33 @@ body.dark .player-breakdown { background: #0d0d0f; }
 .bøde-hero-pill.red   { background: rgba(239,68,68,0.2); color: #fca5a5; }
 .bøde-hero-pill.green { background: rgba(34,197,94,0.2); color: #86efac; }
 
-.bøde-spiller-card.betalt { opacity: 0.7; }
+.bøde-spiller-card.betalt { opacity: 0.65; }
 .betalt-label { color: var(--green); font-weight: 700; }
 .betalt-btn {
-  border: none; border-radius: 20px; padding: 5px 12px;
-  font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-body);
+  border: none; border-radius: 20px; padding: 4px 10px;
+  font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--font-body);
   background: #f3f4f6; color: var(--muted); transition: all 0.15s; white-space: nowrap;
 }
 .betalt-btn.active { background: #dcfce7; color: var(--green); }
 .betalt-btn:active { opacity: 0.7; }
+.bøde-spiller-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer;
+}
+.bøde-kamp-breakdown { border-top: 1px solid var(--border); }
+.bøde-kamp-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid var(--border); gap: 10px;
+}
+.bøde-kamp-row:last-child { border-bottom: none; }
+.bøde-kamp-row.betalt { opacity: 0.5; }
+.bøde-kamp-info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.bøde-kamp-mod { font-size: 13px; font-weight: 600; }
+.bøde-kamp-dato { font-size: 11px; color: var(--muted); }
+.bøde-kamp-typer { font-size: 11px; color: var(--muted); }
+body.dark .bøde-kamp-breakdown { border-color: #2c2c2e; }
+body.dark .bøde-kamp-row { border-color: #2c2c2e; }
+body.dark .betalt-btn { background: #2c2c2e; color: #8e8e93; }
 
 /* ── REFERAT ── */
 .referat-hint {
