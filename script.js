@@ -190,7 +190,8 @@ async function doLogin() {
   try {
     const fresh = await apiGet();
     mergeStateFromApi(fresh);
-    const result = await jsonp(`${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(state.data))}`);
+    const loginData = { ...state.data, kampe: state.data.kampe.map(({ referat, ...k }) => k) };
+    const result = await jsonp(`${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(loginData))}`);
     if (result.success) {
       state.isAdmin = true;
       state.adminPassword = pw;
