@@ -188,13 +188,12 @@ async function doLogin() {
   btn.textContent = 'Logger ind...';
   btn.disabled = true;
   try {
-    const fresh = await apiGet();
-    mergeStateFromApi(fresh);
-    const loginData = { ...state.data, kampe: state.data.kampe.map(({ referat, ...k }) => k) };
-    const result = await jsonp(`${API_URL}?action=saveData&password=${encodeURIComponent(pw)}&data=${encodeURIComponent(JSON.stringify(loginData))}`);
+    const result = await jsonp(`${API_URL}?action=checkPassword&password=${encodeURIComponent(pw)}`);
     if (result.success) {
       state.isAdmin = true;
       state.adminPassword = pw;
+      const fresh = await apiGet();
+      mergeStateFromApi(fresh);
       closeLogin();
       updateAdminBtn();
       renderAll();
