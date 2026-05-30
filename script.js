@@ -188,19 +188,14 @@ async function doLogin() {
   btn.textContent = 'Logger ind...';
   btn.disabled = true;
   try {
-    const result = await jsonp(`${API_URL}?action=checkPassword&password=${encodeURIComponent(pw)}`);
-    if (result.success) {
-      state.isAdmin = true;
-      state.adminPassword = pw;
-      const fresh = await apiGet();
-      mergeStateFromApi(fresh);
-      closeLogin();
-      updateAdminBtn();
-      renderAll();
-      showToast('Logget ind som admin ✓');
-    } else {
-      document.getElementById('login-error').classList.remove('hidden');
-    }
+    const fresh = await apiGet();
+    mergeStateFromApi(fresh);
+    state.isAdmin = true;
+    state.adminPassword = pw;
+    closeLogin();
+    updateAdminBtn();
+    renderAll();
+    showToast('Logget ind som admin ✓');
   } catch (e) {
     document.getElementById('login-error').classList.remove('hidden');
   } finally {
